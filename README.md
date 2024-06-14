@@ -30,8 +30,12 @@ The following is the code for a wrapper around the [OpenCLIP](https://github.com
 ## :hammer: Installation
 `legrad` library can be simply installed via pip: 
 ```bash
-$ pip install legrad_torch
+# official installation
+pip install legrad_torch
+# bruno's modified installation (double check if it works)
+pip install -e git+https://github.com/bjuncek/LeGrad.git
 ```
+
 
 ## Demo
 - Try out our web demo on [HuggingFace Spaces](https://huggingface.co/spaces) [![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue)](https://huggingface.co/spaces/WalidBouss/LeGrad)

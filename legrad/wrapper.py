@@ -141,11 +141,13 @@ class LeWrapper(nn.Module):
         elif 'coca' in self.model_type:
             return self.compute_legrad_coca(text_embedding, image)
 
-    def compute_legrad_clip(self, text_embedding, image=None):
+    def compute_legrad_clip(self, text_embedding, image=None, image_embedding=None):
         num_prompts = text_embedding.shape[0]
         if image is not None:
             # image = image.repeat(num_prompts, 1, 1, 1)
             _ = self.encode_image(image)
+        
+        if image
 
         blocks_list = list(dict(self.visual.transformer.resblocks.named_children()).values())
 
@@ -156,6 +158,9 @@ class LeWrapper(nn.Module):
             intermediate_feat = self.visual.ln_post(intermediate_feat.mean(dim=0)) @ self.visual.proj
             intermediate_feat = F.normalize(intermediate_feat, dim=-1)
             image_features_list.append(intermediate_feat)
+        
+        print("Number of features", len(image_features_list))
+        print("Number of blocks to average over", len(blocks_list[self.starting_depth:]))
 
         num_tokens = blocks_list[-1].feat_post_mlp.shape[0] - 1
         w = h = int(math.sqrt(num_tokens))
@@ -175,6 +180,7 @@ class LeWrapper(nn.Module):
                 0]  # [batch_size * num_heads, N, N]
             grad = rearrange(grad, '(b h) n m -> b h n m', b=num_prompts)  # separate batch and attn heads
             grad = torch.clamp(grad, min=0.)
+            print(layer, "Dimensions of accumulated gradients", grad.shape)
 
             image_relevance = grad.mean(dim=1).mean(dim=1)[:, 1:]  # average attn over [CLS] + patch tokens
             expl_map = rearrange(image_relevance, 'b (w h) -> 1 b w h', w=w, h=h)
