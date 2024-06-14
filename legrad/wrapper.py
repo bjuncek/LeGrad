@@ -147,8 +147,6 @@ class LeWrapper(nn.Module):
             # image = image.repeat(num_prompts, 1, 1, 1)
             _ = self.encode_image(image)
         
-        if image
-
         blocks_list = list(dict(self.visual.transformer.resblocks.named_children()).values())
 
         image_features_list = []

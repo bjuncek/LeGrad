@@ -33,7 +33,7 @@ The following is the code for a wrapper around the [OpenCLIP](https://github.com
 # official installation
 pip install legrad_torch
 # bruno's modified installation (double check if it works)
-pip install -e git+https://github.com/bjuncek/LeGrad.git
+pip install -e git+https://github.com/bjuncek/LeGrad.git@main#egg=legrad_torch
 ```
 
 
