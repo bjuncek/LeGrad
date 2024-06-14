@@ -162,6 +162,7 @@ class LeWrapper(nn.Module):
 
         num_tokens = blocks_list[-1].feat_post_mlp.shape[0] - 1
         w = h = int(math.sqrt(num_tokens))
+        print("Num_tokens", num_tokens, w, h)
 
         # ----- Get explainability map
         accum_expl_map = 0
@@ -181,6 +182,7 @@ class LeWrapper(nn.Module):
             print(layer, "Dimensions of accumulated gradients", grad.shape)
 
             image_relevance = grad.mean(dim=1).mean(dim=1)[:, 1:]  # average attn over [CLS] + patch tokens
+            print("Image relevance size", image_relevance.shape)
             expl_map = rearrange(image_relevance, 'b (w h) -> 1 b w h', w=w, h=h)
             expl_map = F.interpolate(expl_map, scale_factor=self.patch_size, mode='bilinear')  # [B, 1, H, W]
             accum_expl_map += expl_map
