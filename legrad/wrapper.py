@@ -163,7 +163,7 @@ class LeWrapper(nn.Module):
         num_tokens = blocks_list[-1].feat_post_mlp.shape[0] - 1
         w = h = int(math.sqrt(num_tokens))
         print("Num_tokens", num_tokens, w, h)
-        print("Block lists (out of interest", blocks_list[self.starting_depth:])
+        print("Block lists (out of interest", len(blocks_list[self.starting_depth:]))
 
         # ----- Get explainability map
         accum_expl_map = 0
