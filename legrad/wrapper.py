@@ -23,7 +23,7 @@ class LeWrapper(nn.Module):
     Wrapper around OpenCLIP to add LeGrad to OpenCLIP's model while keep all the functionalities of the original model.
     """
 
-    def __init__(self, model, layer_index=-2):
+    def __init__(self, model, layer_index=-1):
         super(LeWrapper, self).__init__()
         # ------------ copy of model's attributes and methods ------------
         for attr in dir(model):
@@ -157,6 +157,7 @@ class LeWrapper(nn.Module):
             intermediate_feat = F.normalize(intermediate_feat, dim=-1)
             image_features_list.append(intermediate_feat)
 
+        print(blocks_list[-1].feat_post_mlp)
         num_tokens = blocks_list[-1].feat_post_mlp.shape[0] - 1
         w = h = int(math.sqrt(num_tokens))
 
