@@ -141,7 +141,7 @@ class LeWrapper(nn.Module):
         elif 'coca' in self.model_type:
             return self.compute_legrad_coca(text_embedding, image)
 
-    def compute_legrad_clip(self, text_embedding, image=None, image_embedding=None):
+    def compute_legrad_clip(self, text_embedding, image=None):
         num_prompts = text_embedding.shape[0]
         if image is not None:
             # image = image.repeat(num_prompts, 1, 1, 1)
@@ -156,21 +156,60 @@ class LeWrapper(nn.Module):
             intermediate_feat = self.visual.ln_post(intermediate_feat.mean(dim=0)) @ self.visual.proj
             intermediate_feat = F.normalize(intermediate_feat, dim=-1)
             image_features_list.append(intermediate_feat)
-        
-        print("Number of features", len(image_features_list))
-        print("Number of blocks to average over", len(blocks_list[self.starting_depth:]))
 
         num_tokens = blocks_list[-1].feat_post_mlp.shape[0] - 1
         w = h = int(math.sqrt(num_tokens))
-        print("Num_tokens", num_tokens, w, h)
-        print("Last block", blocks_list[-1])
 
         # ----- Get explainability map
         accum_expl_map = 0
         for layer, (blk, img_feat) in enumerate(zip(blocks_list[self.starting_depth:], image_features_list)):
             self.visual.zero_grad()
             sim = text_embedding @ img_feat.transpose(-1, -2)  # [1, 1]
+            print("Sim shape", sim.shape)
             one_hot = F.one_hot(torch.arange(0, num_prompts)).float().requires_grad_(True).to(text_embedding.device)
+            one_hot = torch.sum(one_hot * sim)
+            print("One hot shape", one_hot.shape)
+
+            attn_map = blocks_list[self.starting_depth + layer].attn.attention_map  # [b, num_heads, N, N]
+
+            # -------- Get explainability map --------
+            grad = torch.autograd.grad(one_hot, [attn_map], retain_graph=True, create_graph=True)[
+                0]  # [batch_size * num_heads, N, N]
+            grad = rearrange(grad, '(b h) n m -> b h n m', b=num_prompts)  # separate batch and attn heads
+            grad = torch.clamp(grad, min=0.)
+
+            image_relevance = grad.mean(dim=1).mean(dim=1)[:, 1:]  # average attn over [CLS] + patch tokens
+            expl_map = rearrange(image_relevance, 'b (w h) -> 1 b w h', w=w, h=h)
+            expl_map = F.interpolate(expl_map, scale_factor=self.patch_size, mode='bilinear')  # [B, 1, H, W]
+            accum_expl_map += expl_map
+
+        # Min-Max Norm
+        accum_expl_map = min_max(accum_expl_map)
+        return accum_expl_map
+
+    def compute_legrad_bruno(self, image=None):
+        num_prompts = image.shape[0]
+        _ = self.encode_image(image)
+        
+        blocks_list = list(dict(self.visual.transformer.resblocks.named_children()).values())
+
+        image_features_list = []
+
+        for layer in range(self.starting_depth, len(self.visual.transformer.resblocks)):
+            intermediate_feat = self.visual.transformer.resblocks[layer].feat_post_mlp  # [num_patch, batch, dim]
+            intermediate_feat = self.visual.ln_post(intermediate_feat.mean(dim=0)) @ self.visual.proj
+            intermediate_feat = F.normalize(intermediate_feat, dim=-1)
+            image_features_list.append(intermediate_feat)
+
+        num_tokens = blocks_list[-1].feat_post_mlp.shape[0] - 1
+        w = h = int(math.sqrt(num_tokens))
+
+        # ----- Get explainability map
+        accum_expl_map = 0
+        for layer, (blk, img_feat) in enumerate(zip(blocks_list[self.starting_depth:], image_features_list)):
+            self.visual.zero_grad()
+            sim = let_embedding @ img_feat.transpose(-1, -2)  # [1, 1]
+            one_hot = F.one_hot(torch.arange(0, num_prompts)).float().requires_grad_(True).to(let_embedding.device)
             one_hot = torch.sum(one_hot * sim)
 
             attn_map = blocks_list[self.starting_depth + layer].attn.attention_map  # [b, num_heads, N, N]
@@ -180,10 +219,8 @@ class LeWrapper(nn.Module):
                 0]  # [batch_size * num_heads, N, N]
             grad = rearrange(grad, '(b h) n m -> b h n m', b=num_prompts)  # separate batch and attn heads
             grad = torch.clamp(grad, min=0.)
-            print(layer, "Dimensions of accumulated gradients", grad.shape)
 
             image_relevance = grad.mean(dim=1).mean(dim=1)[:, 1:]  # average attn over [CLS] + patch tokens
-            print("Image relevance size", image_relevance.shape)
             expl_map = rearrange(image_relevance, 'b (w h) -> 1 b w h', w=w, h=h)
             expl_map = F.interpolate(expl_map, scale_factor=self.patch_size, mode='bilinear')  # [B, 1, H, W]
             accum_expl_map += expl_map
