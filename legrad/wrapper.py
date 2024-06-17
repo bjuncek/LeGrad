@@ -167,8 +167,9 @@ class LeWrapper(nn.Module):
             sim = text_embedding @ img_feat.transpose(-1, -2)  # [1, 1]
             print("Sim shape", sim.shape)
             one_hot = F.one_hot(torch.arange(0, num_prompts)).float().requires_grad_(True).to(text_embedding.device)
+            print("one hot pre sum", one_hot)
             one_hot = torch.sum(one_hot * sim)
-            print("One hot shape", one_hot.shape)
+            print("One hot shape", one_hot)
 
             attn_map = blocks_list[self.starting_depth + layer].attn.attention_map  # [b, num_heads, N, N]
 
@@ -192,10 +193,10 @@ class LeWrapper(nn.Module):
         _ = self.encode_image(image)
         
         blocks_list = list(dict(self.visual.transformer.resblocks.named_children()).values())
-
         image_features_list = []
 
         for layer in range(self.starting_depth, len(self.visual.transformer.resblocks)):
+            print("Starting depth and layer", self.starting_depth, layer)
             intermediate_feat = self.visual.transformer.resblocks[layer].feat_post_mlp  # [num_patch, batch, dim]
             intermediate_feat = self.visual.ln_post(intermediate_feat.mean(dim=0)) @ self.visual.proj
             intermediate_feat = F.normalize(intermediate_feat, dim=-1)
