@@ -219,9 +219,9 @@ class LeWrapper(nn.Module):
             # -------- Get explainability map --------
 
             print("Imgfeat shape", img_feat.shape)
-            grad = torch.autograd.grad(img_feat, [attn_map], retain_graph=True, create_graph=True)[
+            # grad = torch.autograd.grad(img_feat, [attn_map], retain_graph=True, create_graph=True)[
                 0]  # [batch_size * num_heads, N, N]
-            print("BRUNO GRAD SHAPE", grad.shape)
+            # print("BRUNO GRAD SHAPE", grad.shape)
 
             """
             grad = rearrange(grad, '(b h) n m -> b h n m', b=num_prompts)  # separate batch and attn heads
@@ -237,7 +237,7 @@ class LeWrapper(nn.Module):
         accum_expl_map = min_max(accum_expl_map)
         return accum_expl_map
         """
-        return grad
+        return None
 
     def compute_legrad_coca(self, text_embedding, image=None):
         if image is not None:
