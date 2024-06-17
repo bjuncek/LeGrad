@@ -153,6 +153,7 @@ class LeWrapper(nn.Module):
 
         for layer in range(self.starting_depth, len(self.visual.transformer.resblocks)):
             intermediate_feat = self.visual.transformer.resblocks[layer].feat_post_mlp  # [num_patch, batch, dim]
+            print("IM feat")
             intermediate_feat = self.visual.ln_post(intermediate_feat.mean(dim=0)) @ self.visual.proj
             intermediate_feat = F.normalize(intermediate_feat, dim=-1)
             image_features_list.append(intermediate_feat)
@@ -175,8 +176,11 @@ class LeWrapper(nn.Module):
             attn_map = blocks_list[self.starting_depth + layer].attn.attention_map  # [b, num_heads, N, N]
 
             # -------- Get explainability map --------
-            grad = torch.autograd.grad(one_hot, [attn_map], retain_graph=True, create_graph=True)[
-                0]  # [batch_size * num_heads, N, N]
+            # grad = torch.autograd.grad(one_hot, [attn_map], retain_graph=True, create_graph=True)[
+            #     0]  # [batch_size * num_heads, N, N]
+            grad = torch.autograd.grad(one_hot, [attn_map], retain_graph=True, create_graph=True)
+            print("Grad shape before indexind", grad.shape)
+            grad = grad[0]  # [batch_size * num_heads, N, N]
             grad = rearrange(grad, '(b h) n m -> b h n m', b=num_prompts)  # separate batch and attn heads
             grad = torch.clamp(grad, min=0.)
 
