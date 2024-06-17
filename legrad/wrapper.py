@@ -219,8 +219,7 @@ class LeWrapper(nn.Module):
             # -------- Get explainability map --------
 
             print("Imgfeat shape", img_feat.shape)
-            # grad = torch.autograd.grad(img_feat, [attn_map], retain_graph=True, create_graph=True)[
-                0]  # [batch_size * num_heads, N, N]
+            # grad = torch.autograd.grad(img_feat, [attn_map], retain_graph=True, create_graph=True)[0]  # [batch_size * num_heads, N, N]
             # print("BRUNO GRAD SHAPE", grad.shape)
 
             """
