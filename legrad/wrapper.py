@@ -219,6 +219,7 @@ class LeWrapper(nn.Module):
             one_hot = F.one_hot(torch.arange(0, num_prompts)).float().requires_grad_(True).to(let_embedding.device)
             one_hot = torch.sum(one_hot * sim)
             """
+            print("IDIOT", blocks_list[self.starting_depth + layer].attn)
 
             attn_map = blocks_list[self.starting_depth + layer].attn.attention_map  # [b, num_heads, N, N]
 
