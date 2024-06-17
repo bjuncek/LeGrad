@@ -217,6 +217,8 @@ class LeWrapper(nn.Module):
             attn_map = blocks_list[self.starting_depth + layer].attn.attention_map  # [b, num_heads, N, N]
 
             # -------- Get explainability map --------
+
+            print("Imgfeat shape", img_feat.shape)
             grad = torch.autograd.grad(img_feat, [attn_map], retain_graph=True, create_graph=True)[
                 0]  # [batch_size * num_heads, N, N]
             print("BRUNO GRAD SHAPE", grad.shape)
