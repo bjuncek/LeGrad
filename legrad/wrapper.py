@@ -219,9 +219,11 @@ class LeWrapper(nn.Module):
             one_hot = F.one_hot(torch.arange(0, num_prompts)).float().requires_grad_(True).to(let_embedding.device)
             one_hot = torch.sum(one_hot * sim)
             """
-            print("IDIOT", blocks_list[self.starting_depth + layer].attn)
+            print("IDIOT", blocks_list[self.starting_depth + layer])
 
             attn_map = blocks_list[self.starting_depth + layer].attn.attention_map  # [b, num_heads, N, N]
+            attn_proj = blocks_list[self.starting_depth + layer].attn.out_proj
+            print("IDIOT2", attn_proj, attn_proj.shape)
 
             # -------- Get explainability map --------
 
