@@ -174,12 +174,12 @@ class LeWrapper(nn.Module):
             print("One hot shape", one_hot)
 
             attn_map = blocks_list[self.starting_depth + layer].attn.attention_map  # [b, num_heads, N, N]
-
+            print("blocks", blocks_list[self.starting_depth + layer])
             # -------- Get explainability map --------
             # grad = torch.autograd.grad(one_hot, [attn_map], retain_graph=True, create_graph=True)[
             #     0]  # [batch_size * num_heads, N, N]
             grad = torch.autograd.grad(one_hot, [attn_map], retain_graph=True, create_graph=True)
-            print("Grad shape before indexind", grad.shape)
+            print("Grad shape before indexind", [g.shape for g in grad])
             grad = grad[0]  # [batch_size * num_heads, N, N]
             grad = rearrange(grad, '(b h) n m -> b h n m', b=num_prompts)  # separate batch and attn heads
             grad = torch.clamp(grad, min=0.)
