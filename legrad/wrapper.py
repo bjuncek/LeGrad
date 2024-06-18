@@ -153,12 +153,10 @@ class LeWrapper(nn.Module):
 
         for layer in range(self.starting_depth, len(self.visual.transformer.resblocks)):
             intermediate_feat = self.visual.transformer.resblocks[layer].feat_post_mlp  # [num_patch, batch, dim]
-            print("IM feat")
             intermediate_feat = self.visual.ln_post(intermediate_feat.mean(dim=0)) @ self.visual.proj
             intermediate_feat = F.normalize(intermediate_feat, dim=-1)
             image_features_list.append(intermediate_feat)
 
-        print(blocks_list[-1].feat_post_mlp)
         num_tokens = blocks_list[-1].feat_post_mlp.shape[0] - 1
         w = h = int(math.sqrt(num_tokens))
 
@@ -167,19 +165,14 @@ class LeWrapper(nn.Module):
         for layer, (blk, img_feat) in enumerate(zip(blocks_list[self.starting_depth:], image_features_list)):
             self.visual.zero_grad()
             sim = text_embedding @ img_feat.transpose(-1, -2)  # [1, 1]
-            print("Sim shape", sim.shape)
             one_hot = F.one_hot(torch.arange(0, num_prompts)).float().requires_grad_(True).to(text_embedding.device)
-            print("one hot pre sum", one_hot)
             one_hot = torch.sum(one_hot * sim)
-            print("One hot shape", one_hot)
 
             attn_map = blocks_list[self.starting_depth + layer].attn.attention_map  # [b, num_heads, N, N]
-            print("blocks", blocks_list[self.starting_depth + layer])
             # -------- Get explainability map --------
             # grad = torch.autograd.grad(one_hot, [attn_map], retain_graph=True, create_graph=True)[
             #     0]  # [batch_size * num_heads, N, N]
             grad = torch.autograd.grad(one_hot, [attn_map], retain_graph=True, create_graph=True)
-            print("Grad shape before indexind", [g.shape for g in grad])
             grad = grad[0]  # [batch_size * num_heads, N, N]
             grad = rearrange(grad, '(b h) n m -> b h n m', b=num_prompts)  # separate batch and attn heads
             grad = torch.clamp(grad, min=0.)
@@ -193,61 +186,6 @@ class LeWrapper(nn.Module):
         accum_expl_map = min_max(accum_expl_map)
         return accum_expl_map
 
-    def compute_legrad_bruno(self, image=None):
-        num_prompts = image.shape[0]
-        _ = self.encode_image(image)
-        
-        blocks_list = list(dict(self.visual.transformer.resblocks.named_children()).values())
-        image_features_list = []
-
-        for layer in range(self.starting_depth, len(self.visual.transformer.resblocks)):
-            print("Starting depth and layer", self.starting_depth, layer)
-            intermediate_feat = self.visual.transformer.resblocks[layer].feat_post_mlp  # [num_patch, batch, dim]
-            intermediate_feat = self.visual.ln_post(intermediate_feat.mean(dim=0)) @ self.visual.proj
-            intermediate_feat = F.normalize(intermediate_feat, dim=-1)
-            image_features_list.append(intermediate_feat)
-
-        num_tokens = blocks_list[-1].feat_post_mlp.shape[0] - 1
-        w = h = int(math.sqrt(num_tokens))
-
-        # ----- Get explainability map
-        accum_expl_map = 0
-        for layer, (blk, img_feat) in enumerate(zip(blocks_list[self.starting_depth:], image_features_list)):
-            self.visual.zero_grad()
-            """
-            sim = let_embedding @ img_feat.transpose(-1, -2)  # [1, 1]
-            one_hot = F.one_hot(torch.arange(0, num_prompts)).float().requires_grad_(True).to(let_embedding.device)
-            one_hot = torch.sum(one_hot * sim)
-            """
-            print("IDIOT", blocks_list[self.starting_depth + layer])
-
-            attn_map = blocks_list[self.starting_depth + layer].attn.attention_map  # [b, num_heads, N, N]
-            attn_proj = blocks_list[self.starting_depth + layer].attn.out_proj
-            print("IDIOT2", attn_proj, attn_proj.shape)
-
-            # -------- Get explainability map --------
-
-            print("Imgfeat shape", img_feat.shape)
-            
-            """
-            grad = torch.autograd.grad(img_feat, [attn_map], retain_graph=True, create_graph=True)[0]  # [batch_size * num_heads, N, N]
-            print("BRUNO GRAD SHAPE", grad.shape)
-
-            
-            grad = rearrange(grad, '(b h) n m -> b h n m', b=num_prompts)  # separate batch and attn heads
-            grad = torch.clamp(grad, min=0.)
-
-            image_relevance = grad.mean(dim=1).mean(dim=1)[:, 1:]  # average attn over [CLS] + patch tokens
-            expl_map = rearrange(image_relevance, 'b (w h) -> 1 b w h', w=w, h=h)
-            expl_map = F.interpolate(expl_map, scale_factor=self.patch_size, mode='bilinear')  # [B, 1, H, W]
-            accum_expl_map += expl_map
-            """
-        """
-        # Min-Max Norm
-        accum_expl_map = min_max(accum_expl_map)
-        return accum_expl_map
-        """
-        return None
 
     def compute_legrad_coca(self, text_embedding, image=None):
         if image is not None:
